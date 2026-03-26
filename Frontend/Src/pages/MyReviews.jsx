@@ -25,22 +25,25 @@ const MyReviews = ({ onNavigate }) => {
       return;
     }
     loadUserReviews();
-  }, [userId, products]);
+  }, [userId]);
 
   const loadUserReviews = async () => {
     if (!userId) return;
-    
+
+    setLoading(true);
     try {
-      // Get all products and filter reviews by userId
-      await fetchProducts();
+      // Load fresh product data directly to avoid dependency recursion
+      const response = await axios.get(API_URL);
+      const allProducts = response.data;
       const reviews = [];
-      
-      products.forEach(product => {
+
+      allProducts.forEach(product => {
         if (product.reviews) {
           product.reviews.forEach(review => {
             if (review.userId === userId) {
               reviews.push({
                 ...review,
+                reviewId: review.reviewId || review._id,
                 productId: product._id,
                 productName: product.ProductName,
                 productImage: product.image
@@ -49,10 +52,11 @@ const MyReviews = ({ onNavigate }) => {
           });
         }
       });
-      
+
       setUserReviews(reviews);
     } catch (error) {
       console.error('Error loading reviews:', error);
+      setError('Could not load review list.');
     } finally {
       setLoading(false);
     }

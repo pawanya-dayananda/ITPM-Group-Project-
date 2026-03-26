@@ -122,7 +122,13 @@ export const addReview = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const newReview = { userId, userName: user.name, rating, comment };
+    const newReview = { 
+      reviewId: new mongoose.Types.ObjectId().toString(),
+      userId, 
+      userName: user.name, 
+      rating, 
+      comment 
+    };
     product.reviews.push(newReview);
     await product.save();
 
@@ -163,7 +169,11 @@ export const updateReview = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const review = product.reviews.id(reviewId);
+    let review = product.reviews.id(reviewId);
+    if (!review) {
+      // Fallback if reviewId is custom field
+      review = product.reviews.find(r => String(r.reviewId) === reviewId || String(r._id) === reviewId);
+    }
     if (!review) {
       return res.status(404).json({ message: "Review not found" });
     }
@@ -188,23 +198,34 @@ export const updateReview = async (req, res) => {
 export const deleteReview = async (req, res) => {
   try {
     const { productId, reviewId } = req.params;
+    console.log('Attempting delete review', { productId, reviewId, body: req.body });
 
     const product = await Product.findById(productId);
     if (!product) {
+      console.log('Delete review: product not found');
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const review = product.reviews.id(reviewId);
+    let review = product.reviews.id(reviewId);
     if (!review) {
+      review = product.reviews.find(r => String(r.reviewId) === reviewId || String(r._id) === reviewId);
+    }
+
+    if (!review) {
+      console.log('Delete review: review not found');
       return res.status(404).json({ message: "Review not found" });
     }
 
+    console.log('Delete review found', { reviewId: review._id, matchedReviewId: review.reviewId, userId: review.userId });
+
     // Check if user owns the review
     if (review.userId !== req.body.userId) {
+      console.log('Delete review: not authorized', { reviewUserId: review.userId, requestUserId: req.body.userId });
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    product.reviews.pull(reviewId);
+    // Remove review from product review array and save
+    product.reviews = product.reviews.filter(r => String(r._id) !== String(review._id) && String(r.reviewId) !== String(review.reviewId));
     await product.save();
 
     res.json({ message: "Review deleted successfully" });
