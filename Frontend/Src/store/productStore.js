@@ -120,5 +120,35 @@ export const useProductStore = create((set) => ({
 
       return { filteredProducts: filtered };
     });
+  },
+
+  // Reviews
+  reviews: [],
+
+  // Fetch reviews for a product
+  fetchReviews: async (productId) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axios.get(`${API_URL}/${productId}/reviews`);
+      set({ reviews: response.data, loading: false });
+    } catch (error) {
+      set({ error: error.response?.data?.message || "Error fetching reviews", loading: false });
+      throw error;
+    }
+  },
+
+  // Add a review to a product
+  addReview: async (productId, reviewData) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axios.post(`${API_URL}/${productId}/reviews`, reviewData);
+      set(state => ({ 
+        reviews: [...state.reviews, response.data.review],
+        loading: false 
+      }));
+    } catch (error) {
+      set({ error: error.response?.data?.message || "Error adding review", loading: false });
+      throw error;
+    }
   }
 }));

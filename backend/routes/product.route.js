@@ -4,7 +4,11 @@ import {
     getProductsByUser,
     addProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    addReview,
+    getReviews,
+    updateReview,
+    deleteReview
 } from '../controllers/product.controller.js';
 
 const router = express.Router();
@@ -23,5 +27,17 @@ router.put('/:id', updateProduct);
 
 // Delete a Product by ID
 router.delete('/:id', deleteProduct);
+
+// Add a review to a product
+router.post('/:id/reviews', addReview);
+
+// Get reviews for a product
+router.get('/:id/reviews', getReviews);
+
+// Update a review
+router.put('/:productId/reviews/:reviewId', updateReview);
+
+// Delete a review
+router.delete('/:productId/reviews/:reviewId', deleteReview);
 
 export default router;

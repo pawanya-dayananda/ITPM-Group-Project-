@@ -3,9 +3,16 @@ import { FaBox, FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import Navigation from '../components/Navigation';
 import ProductCard from '../components/ProductCard';
 import { useProductStore } from '../store/productStore';
+import { useUserStore } from '../store/userStore';
+import axios from 'axios';
+
+const API_URL = import.meta.env.MODE === "development"
+    ? "http://localhost:5000/api/products"
+    : "/api/products";
 
 const Products = ({ onNavigate, category, search: initialSearch }) => {
   const { products, loading, error, fetchProducts } = useProductStore();
+  const { userId } = useUserStore();
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -14,6 +21,10 @@ const Products = ({ onNavigate, category, search: initialSearch }) => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(category || '');
   const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [rating, setRating] = useState('');
+  const [comment, setComment] = useState('');
+  const [reviewError, setReviewError] = useState('');
 
   const productTypes = [
     'Books & Stationery',
@@ -81,6 +92,42 @@ const Products = ({ onNavigate, category, search: initialSearch }) => {
   const openProductDetails = (product) => {
     setSelectedProduct(product);
     setShowDetails(true);
+    fetchProductReviews(product._id);
+  };
+
+  const fetchProductReviews = async (productId) => {
+    try {
+      const response = await axios.get(`${API_URL}/${productId}/reviews`);
+      setReviews(response.data);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    }
+  };
+
+  const handleAddReview = async (e) => {
+    e.preventDefault();
+    setReviewError('');
+    if (!rating || !comment) {
+      setReviewError('Please select a rating and enter a comment.');
+      return;
+    }
+    if (!userId) {
+      setReviewError('Please log in to add a review.');
+      return;
+    }
+    try {
+      await axios.post(`${API_URL}/${selectedProduct._id}/reviews`, {
+        userId,
+        rating: parseInt(rating),
+        comment
+      });
+      setRating('');
+      setComment('');
+      fetchProductReviews(selectedProduct._id);
+    } catch (error) {
+      setReviewError(error.response?.data?.message || 'Failed to add review. Please try again.');
+      console.error('Error adding review:', error);
+    }
   };
 
   if (loading) {
@@ -443,6 +490,75 @@ const Products = ({ onNavigate, category, search: initialSearch }) => {
                           <p className="font-semibold">{selectedProduct.Contact}</p>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Reviews Section */}
+                  <div className="mt-6">
+                    <h4 className="font-semibold text-gray-700 mb-4 text-lg">Reviews</h4>
+                    
+                    {/* Add Review Form */}
+                    {userId && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <h5 className="font-medium mb-2">Add a Review</h5>
+                        <form onSubmit={handleAddReview} className="space-y-2">
+                          <div>
+                            <label className="block text-sm font-medium">Rating</label>
+                            <select 
+                              value={rating} 
+                              onChange={(e) => setRating(e.target.value)} 
+                              className="w-full p-1 border rounded text-sm"
+                              required
+                            >
+                              <option value="">Select rating</option>
+                              <option value="1">1 Star</option>
+                              <option value="2">2 Stars</option>
+                              <option value="3">3 Stars</option>
+                              <option value="4">4 Stars</option>
+                              <option value="5">5 Stars</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium">Comment</label>
+                            <textarea 
+                              value={comment} 
+                              onChange={(e) => setComment(e.target.value)} 
+                              className="w-full p-1 border rounded text-sm" 
+                              rows="2"
+                              required
+                            ></textarea>
+                          </div>
+                          {reviewError && <p className="text-red-500 text-xs">{reviewError}</p>}
+                          <button 
+                            type="submit" 
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                          >
+                            Submit
+                          </button>
+                        </form>
+                      </div>
+                    )}
+
+                    {/* Display Reviews */}
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {reviews.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No reviews yet.</p>
+                      ) : (
+                        reviews.map((review, index) => (
+                          <div key={index} className="p-2 border rounded text-sm">
+                            <div className="flex items-center mb-1">
+                              <span className="font-medium text-sm">{review.userName || review.userId}</span>
+                              <span className="ml-2 text-yellow-500 text-sm">
+                                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                              </span>
+                            </div>
+                            <p className="text-gray-600 text-sm">{review.comment}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(review.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

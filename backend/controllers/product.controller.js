@@ -1,4 +1,5 @@
 import Product from '../models/Product.model.js';
+import User from '../models/user.model.js';
 
 // Get all Products
 export const getProduct = async (req, res) => {
@@ -95,6 +96,120 @@ export const deleteProduct = async (req, res) => {
     res.json({ message: "Product deleted successfully" });
   } catch (error) {
     console.error("Delete product error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Add a review to a product
+export const addReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, rating, comment } = req.body;
+
+    console.log('Adding review to product', id, { userId, rating, comment });
+
+    if (!userId || !rating || !comment) {
+      return res.status(400).json({ message: "User ID, rating, and comment are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const newReview = { userId, userName: user.name, rating, comment };
+    product.reviews.push(newReview);
+    await product.save();
+
+    res.status(201).json({ message: "Review added successfully", review: newReview });
+  } catch (error) {
+    console.error("Add review error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get reviews for a product
+export const getReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id).select('reviews');
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json(product.reviews);
+  } catch (error) {
+    console.error("Get reviews error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update a review
+export const updateReview = async (req, res) => {
+  try {
+    const { productId, reviewId } = req.params;
+    const { rating, comment } = req.body;
+
+    if (!rating || !comment) {
+      return res.status(400).json({ message: "Rating and comment are required" });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const review = product.reviews.id(reviewId);
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+
+    // Check if user owns the review
+    if (review.userId !== req.body.userId) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    review.rating = rating;
+    review.comment = comment;
+    await product.save();
+
+    res.json({ message: "Review updated successfully", review });
+  } catch (error) {
+    console.error("Update review error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Delete a review
+export const deleteReview = async (req, res) => {
+  try {
+    const { productId, reviewId } = req.params;
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const review = product.reviews.id(reviewId);
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+
+    // Check if user owns the review
+    if (review.userId !== req.body.userId) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    product.reviews.pull(reviewId);
+    await product.save();
+
+    res.json({ message: "Review deleted successfully" });
+  } catch (error) {
+    console.error("Delete review error:", error);
     res.status(500).json({ message: error.message });
   }
 };

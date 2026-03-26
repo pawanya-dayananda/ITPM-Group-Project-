@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { FaBox, FaPlus, FaUserCircle, FaStore } from 'react-icons/fa';
+import axios from 'axios';
 import { useProductStore } from '../store/productStore';
 import { useUserStore } from '../store/userStore';
 import ProductCard from '../components/ProductCard';
 import ProductFormModal from '../components/ProductFormModal';
 import '../styles/product.css';
+
+const API_URL = import.meta.env.MODE === "development"
+    ? "http://localhost:5000/api/products"
+    : "/api/products";
 
 const ProductCardView = ({ onNavigate }) => {
     const { products, loading, error, fetchProducts } = useProductStore();
@@ -15,6 +20,10 @@ const ProductCardView = ({ onNavigate }) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const productsPerPage = 9;
+    const [reviews, setReviews] = useState([]);
+    const [rating, setRating] = useState('');
+    const [comment, setComment] = useState('');
+    const [reviewError, setReviewError] = useState('');
 
     useEffect(() => {
         // Initialize user if not exists
@@ -30,6 +39,42 @@ const ProductCardView = ({ onNavigate }) => {
     const openProductDetails = (product) => {
         setSelectedProduct(product);
         setShowModal(true);
+        fetchProductReviews(product._id);
+    };
+
+    const fetchProductReviews = async (productId) => {
+        try {
+            const response = await axios.get(`${API_URL}/${productId}/reviews`);
+            setReviews(response.data);
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
+        }
+    };
+
+    const handleAddReview = async (e) => {
+        e.preventDefault();
+        setReviewError('');
+        if (!rating || !comment) {
+            setReviewError('Please select a rating and enter a comment.');
+            return;
+        }
+        if (!userId) {
+            setReviewError('Please log in to add a review.');
+            return;
+        }
+        try {
+            await axios.post(`${API_URL}/${selectedProduct._id}/reviews`, {
+                userId,
+                rating: parseInt(rating),
+                comment
+            });
+            setRating('');
+            setComment('');
+            fetchProductReviews(selectedProduct._id);
+        } catch (error) {
+            setReviewError(error.response?.data?.message || 'Failed to add review. Please try again.');
+            console.error('Error adding review:', error);
+        }
     };
 
     const indexOfLastProduct = currentPage * productsPerPage;
@@ -240,6 +285,75 @@ const ProductCardView = ({ onNavigate }) => {
                                             <p className="text-gray-600 text-lg mt-1">
                                                 {selectedProduct.createdDate ? new Date(selectedProduct.createdDate).toLocaleDateString() : 'N/A'}
                                             </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Reviews Section */}
+                                    <div className="mt-8">
+                                        <h4 className="font-semibold text-gray-700 mb-4 text-xl">Reviews</h4>
+                                        
+                                        {/* Add Review Form */}
+                                        {userId && (
+                                            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                                <h5 className="font-medium mb-2">Add a Review</h5>
+                                                <form onSubmit={handleAddReview} className="space-y-3">
+                                                    <div>
+                                                        <label className="block text-sm font-medium">Rating</label>
+                                                        <select 
+                                                            value={rating} 
+                                                            onChange={(e) => setRating(e.target.value)} 
+                                                            className="w-full p-2 border rounded"
+                                                            required
+                                                        >
+                                                            <option value="">Select rating</option>
+                                                            <option value="1">1 Star</option>
+                                                            <option value="2">2 Stars</option>
+                                                            <option value="3">3 Stars</option>
+                                                            <option value="4">4 Stars</option>
+                                                            <option value="5">5 Stars</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium">Comment</label>
+                                                        <textarea 
+                                                            value={comment} 
+                                                            onChange={(e) => setComment(e.target.value)} 
+                                                            className="w-full p-2 border rounded" 
+                                                            rows="3"
+                                                            required
+                                                        ></textarea>
+                                                    </div>
+                                                    {reviewError && <p className="text-red-500 text-sm">{reviewError}</p>}
+                                                    <button 
+                                                        type="submit" 
+                                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                    >
+                                                        Submit Review
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        )}
+
+                                        {/* Display Reviews */}
+                                        <div className="space-y-4">
+                                            {reviews.length === 0 ? (
+                                                <p className="text-gray-500">No reviews yet.</p>
+                                            ) : (
+                                                reviews.map((review, index) => (
+                                                    <div key={index} className="p-4 border rounded-lg">
+                                                        <div className="flex items-center mb-2">
+                                                            <span className="font-medium">{review.userName || review.userId}</span>
+                                                            <span className="ml-2 text-yellow-500">
+                                                                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-gray-600">{review.comment}</p>
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            {new Date(review.createdAt).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 </div>
