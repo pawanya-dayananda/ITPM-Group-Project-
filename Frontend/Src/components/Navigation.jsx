@@ -1,4 +1,4 @@
-import { FaHome, FaBox, FaCalendar, FaTrophy, FaUserCircle } from 'react-icons/fa';
+import { FaHome, FaBox, FaCalendar, FaTrophy, FaUserCircle, FaStar } from 'react-icons/fa';
 import { useUserStore } from '../store/userStore';
 
 const Navigation = ({ currentPage, onNavigate }) => {
@@ -7,6 +7,7 @@ const Navigation = ({ currentPage, onNavigate }) => {
   const navItems = [
     { id: 'home', label: 'Home', icon: FaHome },
     { id: 'products', label: 'Products', icon: FaBox },
+    { id: 'myReviews', label: 'My Reviews', icon: FaStar },
     { id: 'events', label: 'Events', icon: FaCalendar },
     { id: 'sports', label: 'Sports', icon: FaTrophy },
     { id: 'profile', label: 'Profile', icon: FaUserCircle },

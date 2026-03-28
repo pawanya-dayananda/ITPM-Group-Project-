@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Products from "./pages/Products";
+import MyReviews from "./pages/MyReviews";
 import Profile from "./pages/Profile";
 import Events from "./pages/Events";
 import Sports from "./pages/Sports";
@@ -39,6 +40,9 @@ const App = () => {
           category={filterParams.category}
           search={filterParams.search}
         />
+      )}
+      {currentPage === 'myReviews' && (
+        <MyReviews onNavigate={handleNavigate} />
       )}
       {currentPage === 'events' && (
         <Events onNavigate={handleNavigate} />
